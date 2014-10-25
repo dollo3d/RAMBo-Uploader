@@ -342,7 +342,7 @@ class DisconnectTarget(TestCase):
         pass
 
 if __name__ == "__main__":
-    import configuration
+    import config.configuration as configuration
     r = RAMBoTester(configuration)
     r.GetTest("Program M32U2 Bootloader").enabled = False
     r.GetTest("Program M2560 Bootloader").enabled = False

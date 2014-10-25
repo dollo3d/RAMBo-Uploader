@@ -19,7 +19,7 @@ from avrdude import *
 from atmega import *
 from testinterface import *
 import serial.tools.list_ports
-import configuration
+import config.configuration as configuration
 
 print "RAMBo Test Server"
 directory = os.path.split(os.path.realpath(__file__))[0]
