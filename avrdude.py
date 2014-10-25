@@ -16,6 +16,8 @@ class Avrdude():
         self.autoEraseFlash = True
         self.verify = True
         self.verbose = 0
+        self.stdout = ""
+        self.stderr = ""
 
     def upload(self, target, timeout = 15):
         #assemble argument array
@@ -45,14 +47,20 @@ class Avrdude():
         if target.lockBits:
             cmd.append("-Ulock:w:" +target.lockBits + ":m")
 
-
         #call avrdude as a subprocess
-        self.uploadProcess = subprocess.Popen(cmd)
+        self.uploadProcess = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                              stderr=subprocess.PIPE)
         timeoutCount = 0
+        self.stdout = ""
+        self.stderr = ""
         while self.uploadProcess.poll() is None: # still alive
             time.sleep(0.5)
             timeoutCount += 0.5
+            #self.stdout += self.uploadProcess.stdout.read()
+            #self.stderr += self.uploadProcess.stderr.read()
             if timeoutCount == timeout:
                 self.uploadProcess.kill()
                 return False
-        return True
+        self.stdout += self.uploadProcess.stdout.read()
+        self.stderr += self.uploadProcess.stderr.read()
+        return self.uploadProcess.returncode is 0

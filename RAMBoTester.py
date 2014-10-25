@@ -34,8 +34,8 @@ class RAMBoTester(TestRunner):
 
         # Set up AVRDUDE
         avrdude = Avrdude()
-        avrdude.path = configuration.avrdude_path
-        avrdude.programmer = configuration.serial_programmer
+        avrdude.path = config.avrdude_path
+        avrdude.programmer = config.serial_programmer
         avrdude.port = self.context.target_port
         avrdude.baudrate = "115200"
         avrdude.autoEraseFlash = False
