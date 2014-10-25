@@ -1,4 +1,4 @@
-#atmega 
+#atmega
 #
 class Atmega():
     "atmega properties to pass to avrdude"
