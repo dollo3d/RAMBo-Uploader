@@ -19,6 +19,14 @@ class TestAnalog(TestCase):
         return self._name if self._name else "Analog read"
 
 
+    def _analogToVoltage(self, analog_values, dividerFactor, voltage = 5.0,
+                         resolution = 1023.0):
+        voltage_values = []
+        for val in analog_values:
+            voltage_values += [(val/resolution)*(voltage/dividerFactor)]
+
+        return voltage_values
+
     def _test(self, context):
         if self.read_from == TestAnalog.READ_FROM_TARGET:
             board = 'target'
@@ -60,25 +68,17 @@ class TestThermistors(TestAnalog):
         context.failedThermistors = self._failed_idx
 
 class TestPowerRails(TestAnalog):
-    def __init__(self, mins, maxs):
+    def __init__(self, dividerFactor, mins, maxs):
         TestAnalog.__init__(self, "Supply Voltages", 'PowerRailPins',
                             TestAnalog.READ_FROM_CONTROLLER, mins, maxs)
-
-
-    def _analogToVoltage(self, analog_values, voltage = 5.0,
-                         resolution = 1023, dividerFactor = 0.091):
-        #divider factor is R2/(R1+R2)
-        #R1 = 47K Ohm
-        #R2 = 4700 Ohm
-        voltage_values = []
-        for val in analog_values:
-            voltage_values += [(val/resolution)*(voltage/dividerFactor)]
-        return voltage_values
+        self.dividerFactor = dividerFactor
 
     def _verify(self, context):
         self.analog_results = self.results
-        self.results = self._analogToVoltage(self.analog_results)
-
+        self.results = self._analogToVoltage(self.analog_results,
+                                             self.dividerFactor)
+        context.log("Analog result: %s" % str(self.analog_results),
+                    context.LOG_LEVEL_DEBUG)
         TestAnalog._verify(self, context)
 
         if self.status == TestStatus.FAILED and len (self._failed_idx) > 0:
@@ -88,12 +88,18 @@ class TestPowerRails(TestAnalog):
         context.failedSupplies = self._failed_idx
 
 class TestVRefs(TestAnalog):
-    def __init__(self, mins, maxs):
+    def __init__(self, dividerFactor, mins, maxs):
         TestAnalog.__init__(self, "Stepper's Voltage reference", 'VRefPins',
                             TestAnalog.READ_FROM_CONTROLLER, mins, maxs)
+        self.dividerFactor = dividerFactor
 
 
     def _verify(self, context):
+        self.analog_results = self.results
+        self.results = self._analogToVoltage(self.analog_results,
+                                             self.dividerFactor)
+        context.log("Analog result: %s" % str(self.analog_results),
+                    context.LOG_LEVEL_DEBUG)
         TestAnalog._verify(self, context)
 
         if self.status == TestStatus.FAILED and len (self._failed_idx) > 0:
@@ -101,6 +107,6 @@ class TestVRefs(TestAnalog):
                 map(lambda x: context.pinmapping.getName('Axis', x),
                     self._failed_idx))
         elif self.status == TestStatus.SUCCESS:
-            if max(self.results) - min(self.results) >= 15:
+            if max(self.analog_results) - min(self.analog_results) >= 15:
                 self.error_string =  "Vref variance too high"
                 self.status = TestStatus.FAILED

@@ -14,16 +14,18 @@ import serial.tools.list_ports
 
 class RAMBoTester(TestRunner):
     # Power Rails
-    ExtruderRailVoltage = 24.0
-    BedRailVoltage = 24.0
+    #ExtruderRailVoltage = 24.0
+    #BedRailVoltage = 24.0
+    ExtruderRailVoltage = 12.0
+    BedRailVoltage = 12.0
     VCCRailVoltage = 5.0
     ErrorMargin = 0.05 # 5%
 
-    # VRef
-    MinVRefValue = 166
-    MaxVRefValue = 195
+    # VRef should be 0.88
+    MinVRefValue = 0.82
+    MaxVRefValue = 0.95
 
-    # Thermistors
+    # Thermistors should be 976
     MinThermistorValue = 967
     MaxThermistorValue = 985
 
@@ -47,7 +49,8 @@ class RAMBoTester(TestRunner):
         program_test_firmware = ProgramFirmware(avrdude, test_firmware,
                                      10, "Program Test Firmware")
         program_test_firmware.fatal = True
-        program_test_firmware.required = True
+        # TODO
+        #program_test_firmware.required = True
 
         # Set up Vendor firmware TestCase
         vendor_firmware = Atmega()
@@ -103,7 +106,9 @@ class RAMBoTester(TestRunner):
             program_test_firmware, #  Required=True, Fatal=True
             ConnectTarget(), #  Required=True, Fatal=True
 
-            TestPowerRails([self.ExtruderRailVoltage * (1 - self.ErrorMargin),
+            #divider factor is R2/(R1+R2) where R1 = 47KOhm and R2 = 4700 Ohm
+            TestPowerRails(4700.0/(4700.0 + 47000.0),
+                           [self.ExtruderRailVoltage * (1 - self.ErrorMargin),
                              self.BedRailVoltage * (1 - self.ErrorMargin),
                              self.VCCRailVoltage * (1 - self.ErrorMargin)],
                             [self.ExtruderRailVoltage * (1 + self.ErrorMargin),
@@ -114,20 +119,30 @@ class RAMBoTester(TestRunner):
             TestMosfets(TestGPIO.LOW),
             TestEndstops(TestGPIO.HIGH),
             TestEndstops(TestGPIO.LOW),
-            # TODO: Add I2C and SPI
 
-            TestMotor(1),
-            TestMotor(2),
-            TestMotor(4),
-            TestMotor(8),
-            TestMotor(16),
+            TestGPIO("I2C", 'I2CControllerPins',
+                     'I2CTargetPins', TestGPIO.DIRECTION_BOTH, TestGPIO.LOW),
+            TestGPIO("I2C", 'I2CControllerPins',
+                     'I2CTargetPins', TestGPIO.DIRECTION_BOTH, TestGPIO.HIGH),
+            TestGPIO("SPI", 'SPIControllerPins',
+                     'SPITargetPins', TestGPIO.DIRECTION_BOTH, TestGPIO.LOW),
+            TestGPIO("SPI", 'SPIControllerPins',
+                     'SPITargetPins', TestGPIO.DIRECTION_BOTH, TestGPIO.HIGH),
 
-            TestVRefs([self.MinVRefValue] * len(RAMBoPinMapping.VRefPins),
-                      [self.MaxVRefValue] * len(RAMBoPinMapping.VRefPins)),
             TestThermistors([self.MinThermistorValue] * \
                               len(RAMBoPinMapping.ThermistorPins),
                             [self.MaxThermistorValue] * \
                               len(RAMBoPinMapping.ThermistorPins)),
+
+            # No resistors are used to capture axis VRef voltages
+            TestVRefs(1, [self.MinVRefValue] * len(RAMBoPinMapping.VRefPins),
+                      [self.MaxVRefValue] * len(RAMBoPinMapping.VRefPins)),
+
+            TestMotor(1),
+            TestMotor(2),
+            TestMotor(4),
+            TestMotor(16),
+
 
             DisconnectTarget(), # finally=True, Required=True
             program_vendor_firmware,
@@ -137,6 +152,11 @@ class RAMBoTester(TestRunner):
     @property
     def context(self):
         return self._context
+
+    def close(self):
+        self.context.controller.pinLow(self.context.pinmapping.PowerPin)
+        self.context.controller.close()
+        self.context.target.close()
 
 
 class RAMBoPinMapping(TestPinMapping):
@@ -171,7 +191,18 @@ class RAMBoPinMapping(TestPinMapping):
 
     # [T3, T2, T0]
     PowerRailPins = [7, 2, 0]
+
     PowerRailNames = ["Extruder rail", "Bed rail", "5V rail"]
+
+
+    # [I2C_SDA, I2C_SCL]
+    I2CTargetPins = [20, 21]
+
+    I2CControllerPins = [20, 21]
+
+    # [SPI_SCK, SPI_SS, SPI_MISO, SPI_MOSI]
+    SPITargetPins = [52, 53, 50, 51]
+    SPIControllerPins = [52, 53, 50, 51]
 
     # Bed on controller
     PowerPin = 3
@@ -205,19 +236,23 @@ class RAMBoContext(TestContext):
 
         self.controller.pinLow(self.pinmapping.PowerPin)
 
-    def TestingStarted(self):
-        TestContext.TestingStarted(self)
+    def TestingStarted(self, tests):
+        TestContext.TestingStarted(self, tests)
         self.target_port = self.config.target_port
         self.target = TestInterface()
         self.log("Powering target board...", self.LOG_LEVEL_INFO)
         if self.controller.pinHigh(self.pinmapping.PowerPin):
             time.sleep(self.config.powering_delay);
 
-    def TestingEnded(self):
-        TestContext.TestingEnded(self)
+    def TestingEnded(self, tests, total, successful, failed, disabled, canceled):
+        TestContext.TestingEnded(self, tests, total, successful,
+                                 failed, disabled,canceled)
         self.log("Restarting test controller...", TestContext.LOG_LEVEL_INFO)
-        self.controller.restart()
-        self.controller.pinLow(self.pinmapping.PowerPin)
+        if self.controller.restart():
+            self.controller.pinLow(self.pinmapping.PowerPin)
+        else:
+            print "Could not reconnect to controller"
+            sys.exit(0)
 
     def find_rambo_port(self, serial_number = None):
         ports = list(serial.tools.list_ports.comports())
@@ -275,10 +310,9 @@ class FindTarget(TestCase):
         self.avrdude = avrdude
         self.fatal = True
         self.required = True
-        self.hidden = True
 
     def name(self):
-        return "Finding target"
+        return "Finding target RAMBo board"
 
     def _test(self, context):
         if self.tester.GetTest("Program M32U2 Bootloader").enabled or \
@@ -289,9 +323,13 @@ class FindTarget(TestCase):
             context.target_port = context.find_target_port()
         if context.target_port is None:
             context.log("Can't find target board.", TestContext.LOG_LEVEL_ERROR)
-            self.error_string = "Connect failed"
+            self.error_string = "Cannot find target board"
             self.status = TestStatus.FAILED
         else:
+            self.results = (context.target_port, context.find_serial_number(context.target_port))
+            context.log("Found target board on port %s with serial number : %s" \
+                        % self.results,
+                        TestContext.LOG_LEVEL_INFO)
             self.avrdude.port = context.target_port
             self.status = TestStatus.SUCCESS
             self.error_string = None
@@ -342,9 +380,43 @@ class DisconnectTarget(TestCase):
         pass
 
 if __name__ == "__main__":
+    import signal
+    import sys
     import config.configuration as configuration
+
+    print "RAMBo Test Server"
+
     r = RAMBoTester(configuration)
-    r.GetTest("Program M32U2 Bootloader").enabled = False
-    r.GetTest("Program M2560 Bootloader").enabled = False
-    r.GetTest("Program Vendor Firmware").enabled = False
-    r.Run()
+    #Setup shutdown handlers
+    def signal_handler(signal, frame):
+        print "Shutting down test server..."
+        try:
+            r.close()
+        except:
+            pass
+        sys.exit(0)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    r.GetTest("Program M32U2 Bootloader").enabled = configuration.icsp_program
+    r.GetTest("Program M2560 Bootloader").enabled = configuration.icsp_program
+    #r.GetTest("Program Test Firmware").enabled = False
+    #r.GetTest("Program Vendor Firmware").enabled = False
+    #r.GetTest("Motors 1/16 Step").enabled = False
+    #r.GetTest("Motors 1/4 Step").enabled = False
+    #r.GetTest("Motors Half Step").enabled = False
+    #r.GetTest("Motors Full Step").enabled = False
+
+    tests_to_run = None
+    if len(sys.argv) > 1:
+        for arg in sys.argv[1:]:
+            test = r.GetTest(arg)
+            if test:
+                if tests_to_run is None:
+                    tests_to_run = []
+                tests_to_run += (test,)
+
+    print "Test server started. Press CTRL-C to exit."
+    while(True):
+        print "Press Enter to start test "
+        raw_input()
+        r.Run(tests_to_run)

@@ -28,7 +28,7 @@ class TestInterface():
         time.sleep(1)
         self.serial.setDTR(1)
 
-        self.watchPuppy.startWatching(timeout = 2)
+        self.watchPuppy.startWatching(timeout = 5)
         while self.serial.inWaiting() == 0:
             time.sleep(0.1)
             if self.watchPuppy.timedOut():
@@ -48,11 +48,14 @@ class TestInterface():
 
     def restart(self):
          self.close()
-         self.open(port = self.serial.port)
+         return self.open(port = self.serial.port)
 
     def read(self):
-        return self.serial.read(self.serial.inWaiting())
-        
+        ret = self.serial.read(self.serial.inWaiting())
+        if (len(ret) > 0):
+            pass #print "Read %d bytes : %s" % (len(ret), ret)
+        return ret
+
     def pinHigh(self, pin):
         self.serial.write("W"+str(pin)+"H_")
         return self.waitForFinish(clear = True)
@@ -122,6 +125,7 @@ class TestInterface():
             self.output += self.read()
             if self.watchPuppy.timedOut():
                 print "Response timed out!"
+                print "Output was: %s" % self.output
                 if clear:
                     self.output = ""
                 return False
@@ -144,5 +148,6 @@ class TestInterface():
         else:
             vals = map(int,re.findall(r'\b\d+\b', self.output))
         self.output = ""
-        self.read()
+        self.output += self.read()
+        #print "New output is : %s" % self.output
         return vals

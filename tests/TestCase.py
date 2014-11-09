@@ -129,9 +129,6 @@ class TestCase(object):
         except Exception, e:
             self.status = TestStatus.CANCELED
             self.error_string = "Error executing test : %s" % e
-        if not self.hidden:
-            context.log("Testing %s done" % self.name(),
-                        TestContext.LOG_LEVEL_LOG)
         return self.Verify(context)
 
     def _test(self, context):
@@ -148,13 +145,14 @@ class TestCase(object):
                         TestContext.LOG_LEVEL_LOG)
             self._verify(context)
         if not self.hidden:
-            context.log("%s Result : %s\n%s" % (self.name(), \
+            context.log("%s : %s" % (self.name(), \
                         "Success" if self.status == TestStatus.SUCCESS else \
                         "%s (%s)" % (self.error_string, \
-                                     TestStatus.ToName(self.status)),
-                                                self.results),
+                                     TestStatus.ToName(self.status))),
                         TestContext.LOG_LEVEL_LOG,
                         color = 'green' if self.success() else 'red')
+            context.log("Results : %s" % str(self.results),
+                        TestContext.LOG_LEVEL_DEBUG)
         return not self.failed()
 
 

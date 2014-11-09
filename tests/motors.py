@@ -38,7 +38,7 @@ class TestMotor(TestCase):
         context.target.setMicroStepping(self.steps)
         context.target.runSteppers(frequency = 200 * self.steps * self.stepperTestRPS,
                                    steps = 200 * self.steps,
-                                   direction = context.target.UP,
+                                   direction = context.target.DOWN,
                                    triggerPin = triggerPin, wait = False)
         self.reverse = context.controller.monitorSteppers(pin = monitorPin,
                                                            frequency = self.monitorFrequency)

@@ -18,6 +18,7 @@ class ProgramFirmware(TestCase):
         else:
             self.error_string = "Upload failed"
             self.status = TestStatus.FAILED
+        self.results = [self.avrdude.stdout, self.avrdude.stderr]
 
     # Will never be called
     def _verify(self, context):

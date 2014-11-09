@@ -21,19 +21,22 @@ m2560_bootloader_path="bootloaders/stk500boot_v2_mega2560.hex"
 controller_port=None
 # Serial number for Test Jig controller
 controller_snr="640323730343512190C0"
+#controller_snr="64036353430351100180"
 # Serial port for Device Under Test. Set to None to auto-detect
 #target_port="/dev/ttyACM1"
 target_port=None
 # List of RAMBo board serial numbers to ignore if auto-detecting target. Useful if you have printers connected to the same PC.
-ignore_rambo_snr=None
+ignore_rambo_snr=("640323738333519081D1", )
+#ignore_rambo_snr=None
+
 # Program the Atmega32u2 and Atmega2560 through ICSP (required if the fuses are not yet set or bootloader not flashed yet)
-icsp_program=True
+icsp_program=False
 # Verify flash after ICSP programming
 icsp_verify=True
 # Delay before testing after we power on the power supply. Some power supply require a bit of time before they provide power.
 powering_delay=1
 
-log_level=5
+log_level=3
 
 # Path to the test firmware
 test_firmware_path="bootloaders/test_firmware.hex"
@@ -42,20 +45,23 @@ vendor_firmware_path="bootloaders/vendor_firmware.hex"
 
 # Database settings
 database_type="log"
+database_filename="results.txt"
+
+#database_type="postgres"
+#database_host="localhost"
+#database_name="rambotest"
+#database_user="rambo"
+#database_password="uploader"
 
 if database_type == "postgres":
     from postgresdb import PostgresDatabase
-    import os
 
-    # Open our file outside of git repo which has database location, password, etc
-    dbfile = open( os.path.split(os.path.realpath(__file__))[0]+'/postgres_info.txt', 'r')
-    postgresInfo = dbfile.read()
-    dbfile.close()
-    database = PostgresDatabase(postgresInfo)
+    database = PostgresDatabase(database_host, database_name,
+                                database_user, database_password)
 elif database_type == "log":
     from logdb import LogDatabase
 
-    database = LogDatabase("results.log")
+    database = LogDatabase(database_filename)
 else:
     from nodb import NoDatabase
 

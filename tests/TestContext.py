@@ -1,5 +1,6 @@
 from testinterface import TestInterface
 from termcolor import colored
+from collections import OrderedDict
 import time
 
 class TestPinMapping(object):
@@ -13,7 +14,7 @@ class TestPinMapping(object):
     def getName(self, item, index = None, default = "Unknown"):
         try:
             names = getattr(self, item + "Names", default)
-            if index:
+            if index is not None:
                 return names[index]
             else:
                 return names
@@ -39,6 +40,8 @@ class TestContext(object):
         self.controller = TestInterface()
         self.pinmapping = TestPinMapping()
         self.log_level = config.log_level
+        self.start_time = None
+        self.end_time = None
 
     @property
     def log_level(self):
@@ -48,14 +51,48 @@ class TestContext(object):
     def log_level(self, level):
         self._log_level = max(0, min(level, TestContext.LOG_LEVEL_DEBUG))
 
-    def TestingStarted(self):
+    def TestingStarted(self, tests):
+        self.start_time = time.localtime()
         self.log("Test started at " + time.strftime("%Y-%m-%d %H:%M:%S",
-                                                    time.localtime()),
+                                                    self.start_time),
                  TestContext.LOG_LEVEL_INFO)
 
-    def TestingEnded(self):
+    def createResultsDictionary(self, tests):
+        results = OrderedDict()
+        for test in tests:
+            results[test.name()] = {"status": test.status,
+                                    "id": test.id,
+                                    "results":test.results}
+
+        return results
+
+    def TestingEnded(self, tests, total, successful, failed, disabled, canceled):
+        self.end_time = time.localtime()
         self.log("Writing results to database...", TestContext.LOG_LEVEL_INFO)
-        # TODO write to database
+
+        if self.config.database:
+            self.config.database.post(self.start_time, self.end_time, tests,
+                                      self.createResultsDictionary(tests))
+
+        self.log("\nTesting ended at " + time.strftime("%Y-%m-%d %H:%M:%S",
+                                                       self.end_time),
+                 TestContext.LOG_LEVEL_LOG)
+        self.log("Total Tests      : %d" % total,
+                 TestContext.LOG_LEVEL_LOG)
+        self.log("Disabled Tests   : %d" % disabled,
+                 TestContext.LOG_LEVEL_LOG)
+        self.log("Successful Tests : %d" % successful,
+                 TestContext.LOG_LEVEL_LOG, color='green')
+        self.log("Failed Tests     : %d" % failed,
+                 TestContext.LOG_LEVEL_LOG,
+                 color=None if failed == 0 else 'red')
+        self.log("Canceled Tests   : %d" % canceled,
+                 TestContext.LOG_LEVEL_LOG,
+                 color=None if canceled == 0 else 'red')
+        self.log("\nOverall result   : %s\n" % ('Successful' if failed == 0
+                                                else 'Failed'),
+                    TestContext.LOG_LEVEL_LOG,
+                    color='green' if failed == 0 else 'red')
 
     def log(self, string, level=LOG_LEVEL_LOG, color=None):
         if color is None:

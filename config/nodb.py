@@ -11,5 +11,5 @@ class NoDatabase():
     def close(self):
         self.opened = False
 
-    def post(self, serial, results, version, details):
+    def post(self, tests):
         pass
