@@ -20,14 +20,15 @@ m2560_bootloader_path="bootloaders/stk500boot_v2_mega2560.hex"
 #controller_port="/dev/ttyACM0"
 controller_port=None
 # Serial number for Test Jig controller
-controller_snr="640323730343512190C0"
+#controller_snr="640323730343512190C0"
 #controller_snr="64036353430351100180"
+controller_snr="6403237303435101B0A1"
 # Serial port for Device Under Test. Set to None to auto-detect
 #target_port="/dev/ttyACM1"
 target_port=None
 # List of RAMBo board serial numbers to ignore if auto-detecting target. Useful if you have printers connected to the same PC.
-ignore_rambo_snr=("640323738333519081D1", )
-#ignore_rambo_snr=None
+#ignore_rambo_snr=("640323738333519081D1", )
+ignore_rambo_snr=None
 
 # Program the Atmega32u2 and Atmega2560 through ICSP (required if the fuses are not yet set or bootloader not flashed yet)
 icsp_program=False

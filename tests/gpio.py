@@ -27,10 +27,6 @@ class TestGPIO(TestCase):
         return "%s %s" % (self._name if self._name else "GPIO",
                           "High" if self.high else "Low")
 
-    def readPin(self, board, pin):
-        # We need to pullup in case a connection is floating (mosfet or disconnected wire)
-        return board.pullupReadPin(pin)
-
     def _test(self, context):
         passed = True
         gpios_target = context.pinmapping.get(self.gpios_target)
@@ -41,13 +37,15 @@ class TestGPIO(TestCase):
             for pin in gpios_target:
                 passed &= getattr(context.target, self.write_pin)(pin)
             for pin in gpios_controller:
-                self.results += self.readPin(context.controller, pin)
+                # We need to pullup in case a connection is floating (mosfet or disconnected wire)
+                self.results += context.controller.pullupReadPin(pin)
         if self.direction == TestGPIO.CONTROLLER_TO_TARGET or \
            self.direction == TestGPIO.DIRECTION_BOTH:
             for pin in gpios_controller:
                 passed &= getattr(context.controller, self.write_pin)(pin)
             for pin in gpios_target:
-                self.results += self.readPin(context.target, pin)
+                # We need to pullup in case a connection is floating (mosfet or disconnected wire)
+                self.results += context.target.pullupReadPin(pin)
 
         if -1 in self.results or not passed:
             self.error_string = "Reading pin value failed."

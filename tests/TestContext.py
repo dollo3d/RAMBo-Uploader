@@ -62,7 +62,8 @@ class TestContext(object):
         for test in tests:
             results[test.name()] = {"status": test.status,
                                     "id": test.id,
-                                    "results":test.results}
+                                    "results": test.results,
+                                    "error": test.error_string}
 
         return results
 

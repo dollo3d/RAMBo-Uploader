@@ -49,15 +49,14 @@ class RAMBoTester(TestRunner):
         program_test_firmware = ProgramFirmware(avrdude, test_firmware,
                                      10, "Program Test Firmware")
         program_test_firmware.fatal = True
-        # TODO
-        #program_test_firmware.required = True
+        program_test_firmware.required = True
 
         # Set up Vendor firmware TestCase
         vendor_firmware = Atmega()
         vendor_firmware.name = "atmega2560"
         vendor_firmware.bootloader = config.vendor_firmware_path
         program_vendor_firmware = ProgramFirmware(avrdude, vendor_firmware,
-                                     120, "Program Vendor Firmware")
+                                     60, "Program Vendor Firmware")
 
         # Set up M32U2 ICSP Programming TestCase
         icsp_m32u2 = Avrdude()
@@ -314,6 +313,31 @@ class FindTarget(TestCase):
     def name(self):
         return "Finding target RAMBo board"
 
+    def waitForTarget(self, target_port):
+        """For some reason, in Linux, you can't initiate the serial communication 
+        for about 10 to 30 seconds after the tty appears in /dev so we need to test
+        if the board is available over tty before continuing, otherwise we'll have
+        errors such as "connect failed" or "upload failed" when we try to connect to
+        it.
+        """
+        avrdude = Avrdude()
+        avrdude.path = self.avrdude.path
+        avrdude.programmer = self.avrdude.programmer
+        avrdude.port = target_port
+        no_image = Atmega()
+        no_image.name = "m2560"
+
+        for attempt in range(0, 30):
+            if avrdude.upload(no_image, 1):
+                # Success, board is available.
+                break
+            else:
+                # We should wait a little more
+                if attempt == 0:
+                    print "Waiting for board to become available (Linux quirk...)"
+        if attempt > 0:
+            time.sleep(1)
+
     def _test(self, context):
         if self.tester.GetTest("Program M32U2 Bootloader").enabled or \
            self.tester.GetTest("Program M2560 Bootloader").enabled:
@@ -331,6 +355,8 @@ class FindTarget(TestCase):
                         % self.results,
                         TestContext.LOG_LEVEL_INFO)
             self.avrdude.port = context.target_port
+            self.waitForTarget(context.target_port)
+
             self.status = TestStatus.SUCCESS
             self.error_string = None
 
