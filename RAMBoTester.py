@@ -410,7 +410,7 @@ if __name__ == "__main__":
     import sys
     import config.configuration as configuration
 
-    print "RAMBo Test Server"
+    print "RAMBo Test Server v2.0"
 
     r = RAMBoTester(configuration)
     #Setup shutdown handlers
