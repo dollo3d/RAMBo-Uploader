@@ -71,8 +71,8 @@ class TestContext(object):
         self.end_time = time.localtime()
         self.log("Writing results to database...", TestContext.LOG_LEVEL_INFO)
 
-        if self.config.database:
-            self.config.database.post(self.start_time, self.end_time, tests,
+        if self.config.logger:
+            self.config.logger.post(self.start_time, self.end_time, tests,
                                       self.createResultsDictionary(tests))
 
         self.log("\nTesting ended at " + time.strftime("%Y-%m-%d %H:%M:%S",

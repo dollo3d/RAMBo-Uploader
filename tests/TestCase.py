@@ -127,7 +127,7 @@ class TestCase(object):
         try:
             self._test(context)
         except Exception, e:
-            self.status = TestStatus.CANCELED
+            self.status = TestStatus.FAILED
             self.error_string = "Error executing test : %s" % e
         return self.Verify(context)
 

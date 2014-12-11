@@ -1,4 +1,4 @@
-class NoDatabase():
+class NoLogs():
     def __init__(self):
         self.opened = False
 
@@ -11,5 +11,5 @@ class NoDatabase():
     def close(self):
         self.opened = False
 
-    def post(self, tests):
+    def post(self, start, end, tests, results):
         pass

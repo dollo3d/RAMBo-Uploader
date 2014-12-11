@@ -1,8 +1,7 @@
 import time
-import json
 from tests.TestCase import TestStatus
 
-class LogDatabase():
+class TextLogger():
     def __init__(self, path):
         self.path = path
         self.fd = None
@@ -24,10 +23,9 @@ class LogDatabase():
         self.open()
         self.fd.write("************ Started testing %s ****************\n" % \
                       (time.strftime("%Y-%m-%d %H:%M:%S", start)))
-        self.fd.write(json.dumps({"start_time": time.mktime(start), "end_time": time.mktime(end),
-                                  "results": results}) + "\n")
         for test in tests:
-            if len(test.results) > 0:
+            # Do not print disabled or canceled tests
+            if test.status == TestStatus.SUCCESS or test.status == TestStatus.FAILED:
                 self.fd.write("%s (%s) : %s\n" % (test.name(),
                                                   ("%s (%s)" % (test.error_string, TestStatus.ToName(test.status))) \
                                                   if test.error_string else TestStatus.ToName(test.status),

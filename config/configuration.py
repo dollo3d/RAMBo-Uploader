@@ -1,5 +1,7 @@
 # Configuration file for Rambo-Uploader
 
+import loggers
+
 # Path to avrdude
 avrdude_path="avrdude"
 # Type of ICSP programmer for Atmega32u2.
@@ -44,26 +46,27 @@ test_firmware_path="bootloaders/test_firmware.hex"
 # Path to the final retail firmware
 vendor_firmware_path="bootloaders/vendor_firmware.hex"
 
-# Database settings
-database_type="log"
-database_filename="results.txt"
+# Disable logs
+#logger = NoLogs()
 
-#database_type="postgres"
+# Use PostgreSQL Database
 #database_host="localhost"
 #database_name="rambotest"
 #database_user="rambo"
 #database_password="uploader"
+#logger = PostgresDatabase(database_host, database_name,
+#                          database_user, database_password)
 
-if database_type == "postgres":
-    from postgresdb import PostgresDatabase
+# Text log
+#logger = TextLogger("results.txt")
 
-    database = PostgresDatabase(database_host, database_name,
-                                database_user, database_password)
-elif database_type == "log":
-    from logdb import LogDatabase
+# JSON log
+#logger = JsonLogger("results.csv")
 
-    database = LogDatabase(database_filename)
-else:
-    from nodb import NoDatabase
+# CSV log
+#logger = CSVLogger("results.csv")
 
-    database = NoDatabase()
+# Multiple logs
+logger = loggers.MultiLogger([loggers.TextLogger("results.txt"),
+                      loggers.JsonLogger("results.json"),
+                      loggers.CSVLogger("results.csv")])
